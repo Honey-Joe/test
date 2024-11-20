@@ -5,8 +5,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const cors = require('cors');
 app.use(cors({
-    origin: 'http://localhost:5173', // Allow requests from this origin
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
+    origin: 'http://localhost:5173', // Update to your React app's origin
 }));
 app.use(cors());
 
