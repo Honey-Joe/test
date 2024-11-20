@@ -3,6 +3,13 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const bodyParser = require('body-parser');
 const app = express();
+const cors = require('cors');
+app.use(cors({
+    origin: 'http://localhost:5173', // Allow requests from this origin
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
+}));
+app.use(cors());
+
 
 // MongoDB Atlas URI
 const mongoURI = 'mongodb+srv://honeyjoe942:Honey0511@techx.gkypa.mongodb.net/';
