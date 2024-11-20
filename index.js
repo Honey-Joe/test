@@ -1,75 +1,42 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const multer = require('multer');
-const bodyParser = require('body-parser');
-const app = express();
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const app = express();
+
+// Middleware to handle CORS
 app.use(cors({
-    origin: 'http://localhost:5173', // Update to your React app's origin
+    origin: 'http://localhost:5173', // Your React app's frontend URL
+    methods: ['GET', 'POST'],
 }));
-app.use(cors());
 
-
-// MongoDB Atlas URI
-const mongoURI = 'mongodb+srv://honeyjoe942:Honey0511@techx.gkypa.mongodb.net/';
-
-// Connect to MongoDB
-mongoose.connect(mongoURI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-});
-
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', () => {
-    console.log('Connected to MongoDB Atlas');
-});
-
-// Define a schema and model
-const imageSchema = new mongoose.Schema({
-    name: String,
-    data: Buffer,
-    contentType: String,
-});
-const Image = mongoose.model('Image', imageSchema);
-
-// Configure multer
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// Middleware
-app.use(bodyParser.json());
-
-// Upload route
-app.post('/upload', upload.single('file'), async (req, res) => {
-    try {
-        const { originalname, mimetype, buffer } = req.file;
-        const newImage = new Image({
-            name: originalname,
-            data: buffer,
-            contentType: mimetype,
-        });
-
-        await newImage.save();
-        res.json({ message: 'File uploaded successfully', id: newImage._id });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error uploading file');
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/'); // Specify the folder where files should be stored
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + path.extname(file.originalname)); // Save file with timestamp
     }
 });
 
-// Retrieve image
-app.get('/image/:id', async (req, res) => {
-    try {
-        const image = await Image.findById(req.params.id);
-        if (!image) return res.status(404).send('Image not found');
+const upload = multer({ storage: storage });
 
-        res.set('Content-Type', image.contentType);
-        res.send(image.data);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error fetching image');
+// POST route to handle file upload
+app.post('/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
     }
+
+    // You can process the file here, or store it in a database if needed
+    // For now, we return the file URL (local path for testing)
+    const fileUrl = `https://test-three-indol-29.vercel.app/uploads/${req.file.filename}`;
+    res.json({ fileUrl });
 });
 
-app.listen(5000, () => console.log('Server running on port 5000'));
+// Serve the uploaded files (in real-world, use a cloud storage or CDN)
+app.use('/uploads', express.static('uploads'));
+
+app.listen(5000, () => {
+    console.log('Server is running on port 5000');
+});
