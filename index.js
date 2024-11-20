@@ -45,7 +45,6 @@ app.use(bodyParser.json());
 app.post('/upload', upload.single('file'), async (req, res) => {
     try {
         const { originalname, mimetype, buffer } = req.file;
-
         const newImage = new Image({
             name: originalname,
             data: buffer,
