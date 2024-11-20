@@ -1,48 +1,70 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const { GridFsStorage } = require('multer-gridfs-storage');
-const Grid = require('gridfs-stream');
-const path = require('path');
+const bodyParser = require('body-parser');
 const app = express();
 
-// MongoDB connection
+// MongoDB Atlas URI
 const mongoURI = 'mongodb+srv://honeyjoe942:Honey0511@techx.gkypa.mongodb.net/';
-const conn = mongoose.createConnection(mongoURI, {
+
+// Connect to MongoDB
+mongoose.connect(mongoURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
 
-// Initialize GridFS
-let gfs;
-conn.once('open', () => {
-    gfs = Grid(conn.db, mongoose.mongo);
-    gfs.collection('uploads');
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', () => {
+    console.log('Connected to MongoDB Atlas');
 });
 
-// GridFS storage setup
-const storage = new GridFsStorage({
-    url: mongoURI,
-    file: (req, file) => {
-        return {
-            filename: `file-${Date.now()}${path.extname(file.originalname)}`,
-            bucketName: 'uploads', // Collection name in GridFS
-        };
-    },
+// Define a schema and model
+const imageSchema = new mongoose.Schema({
+    name: String,
+    data: Buffer,
+    contentType: String,
 });
+const Image = mongoose.model('Image', imageSchema);
+
+// Configure multer
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Routes
-app.post('/upload', upload.single('file'), (req, res) => {
-    res.json({ file: req.file });
+// Middleware
+app.use(bodyParser.json());
+
+// Upload route
+app.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        const { originalname, mimetype, buffer } = req.file;
+
+        const newImage = new Image({
+            name: originalname,
+            data: buffer,
+            contentType: mimetype,
+        });
+
+        await newImage.save();
+        res.json({ message: 'File uploaded successfully', id: newImage._id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error uploading file');
+    }
 });
 
-app.get('/files/:filename', async (req, res) => {
-    const file = await gfs.files.findOne({ filename: req.params.filename });
-    if (!file) return res.status(404).send('File not found');
+// Retrieve image
+app.get('/image/:id', async (req, res) => {
+    try {
+        const image = await Image.findById(req.params.id);
+        if (!image) return res.status(404).send('Image not found');
 
-    const readStream = gfs.createReadStream(file.filename);
-    readStream.pipe(res);
+        res.set('Content-Type', image.contentType);
+        res.send(image.data);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error fetching image');
+    }
 });
 
 app.listen(5000, () => console.log('Server running on port 5000'));
